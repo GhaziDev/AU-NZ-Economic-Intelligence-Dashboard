@@ -465,24 +465,28 @@ def generate_insights(
     regime_df: pd.DataFrame,
     anomaly_df: pd.DataFrame | None = None,
     forecast_df: pd.DataFrame | None = None,
+    use_claude: bool = True,
 ) -> pd.DataFrame:
     """
-    Try Claude API first; fall back to template insights if unavailable.
+    Try Claude API first; fall back to template insights if unavailable or disabled.
     """
     if anomaly_df is None:
         anomaly_df = pd.DataFrame()
     if forecast_df is None:
         forecast_df = pd.DataFrame()
 
-    try:
-        from ai_insights_claude import generate_claude_insights
-        claude_df = generate_claude_insights(datasets, health_df, regime_df, anomaly_df, forecast_df)
-        if not claude_df.empty:
-            return claude_df
-    except Exception as e:
-        print(f"  [Claude] Could not load Claude module: {e}")
+    if use_claude:
+        try:
+            from ai_insights_claude import generate_claude_insights
+            claude_df = generate_claude_insights(datasets, health_df, regime_df, anomaly_df, forecast_df)
+            if not claude_df.empty:
+                return claude_df
+        except Exception as e:
+            print(f"  [Claude] Could not load Claude module: {e}")
+    else:
+        print("  [Claude] Skipped (--no-claude flag set).")
 
-    print("  Using template insights (no Claude API key).")
+    print("  Using template insights.")
     return _template_insights(datasets, health_df, regime_df)
 
 
@@ -490,7 +494,7 @@ def generate_insights(
 # Master analysis runner
 # ---------------------------------------------------------------------------
 
-def run_analysis(datasets: dict) -> dict[str, pd.DataFrame]:
+def run_analysis(datasets: dict, use_claude: bool = True) -> dict[str, pd.DataFrame]:
     print("\n=== Running AI Analysis ===")
 
     print("  Building ARIMA forecasts...")
@@ -517,7 +521,7 @@ def run_analysis(datasets: dict) -> dict[str, pd.DataFrame]:
     comparison = build_comparison(datasets)
 
     print("  Generating natural language insights...")
-    insights = generate_insights(datasets, health, regimes, anomalies, forecasts)
+    insights = generate_insights(datasets, health, regimes, anomalies, forecasts, use_claude=use_claude)
 
     results = {
         "forecasts":    forecasts,

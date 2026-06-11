@@ -1,31 +1,63 @@
 """
 Master pipeline runner.
-Run this script to:
-  1. Download latest data from RBA + World Bank
-  2. Run all AI analysis (forecasts, anomaly detection, health scoring)
-  3. Build the Power BI Excel data source
-  4. Print a summary report
 
 Usage:
-    python run_pipeline.py
+    python run_pipeline.py                        # full run
+    python run_pipeline.py --skip-fetch           # reuse cached data, skip downloads
+    python run_pipeline.py --no-claude            # skip Claude API, use template insights
+    python run_pipeline.py --output my_file.xlsx  # custom output path
+    python run_pipeline.py --skip-fetch --no-claude  # fastest run, fully offline
 """
 
+import argparse
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "scripts"))
 
-from fetch_data import fetch_all
+from fetch_data import fetch_all, load_cached
 from ai_analysis import run_analysis
 from build_excel import build_workbook
 
 
-def print_banner():
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="AU/NZ Economic Intelligence Dashboard pipeline"
+    )
+    parser.add_argument(
+        "--skip-fetch",
+        action="store_true",
+        help="Load data from cached CSVs instead of downloading. Much faster when re-running analysis.",
+    )
+    parser.add_argument(
+        "--no-claude",
+        action="store_true",
+        help="Skip the Claude API call and use template insights instead.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Custom path for the output Excel file (default: output/AU_NZ_Economic_Intelligence.xlsx).",
+    )
+    return parser.parse_args()
+
+
+def print_banner(args: argparse.Namespace):
     print("=" * 65)
-    print("   AU/NZ Economic Intelligence Dashboard — AI Pipeline")
+    print("   AU/NZ Economic Intelligence Dashboard  -  AI Pipeline")
     print("   Data: RBA + World Bank  |  AI: ARIMA + IsolationForest")
     print("=" * 65)
+    flags = []
+    if args.skip_fetch:
+        flags.append("cached data")
+    if args.no_claude:
+        flags.append("no Claude")
+    if flags:
+        print(f"   Flags: {', '.join(flags)}")
+        print("=" * 65)
 
 
 def print_summary(datasets: dict, analysis: dict):
@@ -80,17 +112,22 @@ def print_summary(datasets: dict, analysis: dict):
 
 
 def main():
+    args = parse_args()
     start = time.time()
-    print_banner()
+    print_banner(args)
 
-    print("\n[1/3] Fetching data...")
-    datasets = fetch_all()
+    if args.skip_fetch:
+        print("\n[1/3] Loading cached data...")
+        datasets = load_cached()
+    else:
+        print("\n[1/3] Fetching data...")
+        datasets = fetch_all()
 
     print("\n[2/3] Running AI analysis...")
-    analysis = run_analysis(datasets)
+    analysis = run_analysis(datasets, use_claude=not args.no_claude)
 
     print("\n[3/3] Building Excel workbook...")
-    path = build_workbook(datasets, analysis)
+    path = build_workbook(datasets, analysis, output_path=args.output)
 
     print_summary(datasets, analysis)
 

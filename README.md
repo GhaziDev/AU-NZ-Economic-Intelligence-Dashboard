@@ -34,20 +34,38 @@ pip install -r requirements.txt
 
 ## How to run
 
-Without Claude (uses template insights):
-
-```
-python run_pipeline.py
-```
-
-With Claude (real LLM analysis):
+Full run with Claude analysis:
 
 ```
 $env:ANTHROPIC_API_KEY = "sk-ant-..."
 python run_pipeline.py
 ```
 
-The script takes about 20 seconds. It prints a summary when done and writes the output file to `output/AU_NZ_Economic_Intelligence.xlsx`.
+Without Claude (uses template insights):
+
+```
+python run_pipeline.py --no-claude
+```
+
+Skip downloading and reuse the last cached data (much faster for re-runs):
+
+```
+python run_pipeline.py --skip-fetch
+```
+
+Fastest offline run (cached data, no Claude):
+
+```
+python run_pipeline.py --skip-fetch --no-claude
+```
+
+Write the Excel file to a custom location:
+
+```
+python run_pipeline.py --output "C:/Reports/my_dashboard.xlsx"
+```
+
+The full run takes about 20 seconds. It prints a summary when done.
 
 ---
 

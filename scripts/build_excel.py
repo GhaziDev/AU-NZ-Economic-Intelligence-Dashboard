@@ -108,10 +108,14 @@ def _make_date_table() -> pd.DataFrame:
     return df
 
 
-def build_workbook(datasets: dict, analysis: dict):
+def build_workbook(datasets: dict, analysis: dict, output_path=None):
     print(f"\n=== Building Excel Workbook ===")
 
-    wb = xlsxwriter.Workbook(str(WORKBOOK_PATH), {"default_date_format": "yyyy-mm-dd"})
+    from pathlib import Path as _Path
+    dest = _Path(output_path) if output_path else WORKBOOK_PATH
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    wb = xlsxwriter.Workbook(str(dest), {"default_date_format": "yyyy-mm-dd"})
 
     # Ensure dates are proper Timestamps for xlsxwriter
     def _prep(df: pd.DataFrame) -> pd.DataFrame:
@@ -176,7 +180,7 @@ def build_workbook(datasets: dict, analysis: dict):
 
     wb.close()
     print(f"\n  Workbook saved: {WORKBOOK_PATH}")
-    return WORKBOOK_PATH
+    return dest
 
 
 if __name__ == "__main__":

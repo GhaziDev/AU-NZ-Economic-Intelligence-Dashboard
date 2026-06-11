@@ -252,6 +252,28 @@ def fetch_worldbank(country: str) -> pd.DataFrame:
 # Master fetch
 # ---------------------------------------------------------------------------
 
+def load_cached() -> dict[str, pd.DataFrame]:
+    """Load datasets from the last saved CSVs in data/raw/ without hitting any APIs."""
+    datasets: dict[str, pd.DataFrame] = {}
+    date_datasets = {"au_cash_rate", "au_cpi", "au_gdp", "au_labour", "au_housing_rates"}
+
+    print("\n=== Loading cached data from disk ===")
+    for name in ["au_cash_rate", "au_cpi", "au_gdp", "au_labour", "au_housing_rates", "wb_au", "wb_nz"]:
+        path = RAW_DIR / f"{name}.csv"
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Cached file not found: {path}\n"
+                "Run without --skip-fetch first to download the data."
+            )
+        df = pd.read_csv(path)
+        if name in date_datasets and "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        datasets[name] = df
+        print(f"  Loaded {name}: {len(df):,} rows")
+
+    return datasets
+
+
 def fetch_all() -> dict[str, pd.DataFrame]:
     print("\n=== Fetching Australian Data (RBA) ===")
     datasets: dict[str, pd.DataFrame] = {}
